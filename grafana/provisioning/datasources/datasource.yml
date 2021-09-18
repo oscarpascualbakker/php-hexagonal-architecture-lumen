@@ -1,0 +1,23 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: 'Prometheus'
+    orgId: 1
+
+datasources:
+  - name: 'Prometheus'
+    type: 'prometheus'
+    access: 'proxy'
+    orgId: 1
+    url: 'hex_arch_prometheus:9090'
+    isDefault: true
+    version: 1
+    editable: true
+  - name: 'Prometheus-MySQL'
+    type: 'prometheus'
+    access: 'proxy'
+    orgId: 1
+    url: 'hex_arch_mysqld_exporter:9104'
+    isDefault: false
+    version: 1
+    editable: true

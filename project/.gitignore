@@ -1,0 +1,5 @@
+/vendor
+.env
+.phpunit.cache
+.phpunit.html
+.phpunit.result.cache

@@ -1,0 +1,118 @@
+version: '2'
+
+services:
+  redis:
+    image: redis
+    container_name: hex_arch_redis
+    expose:
+      - 6379
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis-data:/data
+
+  prometheus:
+    container_name: hex_arch_prometheus
+    image: prom/prometheus:v2.1.0
+    volumes:
+      - ./prometheus:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+    links:
+      - redis
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hex_arch_grafana
+    ports:
+      - 3000:3000
+    links:
+      - prometheus:prometheus
+    volumes:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=MYPASSWORT
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=myadrress@gmail.com
+      - GF_SMTP_PASSWORD=mypassword
+      - GF_SMTP_FROM_ADDRESS=myaddress@gmail.com
+
+  mysql:
+    image: mysql:5.7
+    command: mysqld --sql_mode=""
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hex_arch_test
+      MYSQL_PASSWORD: root
+    container_name: hex_arch_mysql
+    expose:
+      - 3306
+    ports:
+      - 3306:3306
+
+  mysqld_exporter:
+    image: prom/mysqld-exporter
+    user: root
+    container_name: hex_arch_mysqld_exporter
+    ports:
+      - '9104:9104'
+    links:
+      - mysql
+    environment:
+      - "DATA_SOURCE_NAME=root:root@(mysql:3306)/hex_arch_test"
+      - "collect.info_schema.tablestats=true"
+      - "collect.info_schema.userstats=true"
+      - "collect.info_schema.query_response_time=true"
+      - "collect.auto_increment.columns=true"
+      - "collect.perf_schema.tableiowaits=true"
+      - "collect.perf_schema.tablelocks=true"
+    depends_on:
+      - mysql
+
+  phpmyadmin:
+    depends_on:
+      - mysql
+    image: phpmyadmin/phpmyadmin
+    container_name: hex_arch_phpmyadmin
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - default
+
+  api:
+    build: .
+    container_name: hex_arch_api
+    volumes:
+      - .:/var/www/html
+    expose:
+      - 80
+    ports:
+      - 80:80
+      - 443:443
+    links:
+      - mysql
+      - redis
+    environment:
+      - REDIS_URL=hex_arch_redis
+    networks:
+      - default
+    depends_on:
+      - prometheus
+      - redis
+
+volumes:
+  datastore:
